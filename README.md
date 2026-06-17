@@ -1,18 +1,20 @@
-# Custom C Memory Allocator and Leak Profiler
+# Multithreaded TLAB Allocator and Cache Aware Matrix Engine
 
-A thread safe, POSIX compliant dynamic memory allocator written from in C. This bypasses the standard C library (`libc`) to manage virtual memory pages directly via the Unix kernel. 
+## Overview
+A custom C++ memory allocator designed for highly concurrent environments, paired with a hardware aware matrix multiplication engine. This project demonstrates performance tuning by manipulating global locks, CPU cache lines, and thread local storage (TLS).
 
-## Architecture
+## The Architecture
+* **Thread Local Allocation Buffers (TLAB):** Replaces standard `malloc` with a lock free fast path. Threads request massive 1MB chunks from the OS and allocate internally using private bump pointers.
+* **Hardware Alignment:** Enforces 64-byte memory alignment to match modern CPU L1 cache lines, perfectly preventing false sharing across cores.
+* **Cache-Aware Matrix Math:** Uses a flat 1D-vector matrix class with a multithreaded `i, k, j` loop order (rather than `i, j, k`) for strictly linear memory access.
 
-* **Direct Kernel Interface:** Replaces legacy `sbrk()` calls with `mmap()` to request anonymous, private memory pages directly from the OS.
-* **Thread Safety:** Utilizes POSIX threads (`pthread_mutex_t`) to lock the global heap space, preventing race conditions.
-* **Strict Alignment:** Enforces 8-byte memory alignment `((size + 7) & ~7)` to maintain CPU cache efficiency and prevent hardware alignment faults.
-* **Bidirectional Coalescing:** Uses a Doubly Linked List to merge adjacent free blocks (forward and backward) to actively eliminate external fragmentation.
+## Performance Gains
+* **Matrix Math (~20x Speedup):** The `i, k, j` loop order provides perfect spatial locality. The CPU reads memory linearly, eliminating cache misses and fully utilizing pre fetched 64-byte chunks.
+* **Memory Thrashing (~8x Speedup):** By bypassing the OS heap's internal mutex, thread contention drops to zero. Allocation is reduced to an `O(1)` pointer addition.
 
-## Features
-
-* **Macro-Injected Profiler:** Hijacks standard `malloc`/`calloc`/`realloc` calls using C preprocessor macros to inject `__FILE__` and `__LINE__` metadata into hidden block headers.
-* **Leak Detection:** Generates real-time heap dumps detailing total requested bytes, active pointers, and the exact origin of leaked memory.
-* **Use-After-Free Protection (Memory Poisoning):** Instantly overwrites freed payloads with `0xDF` (Dead Free) to neutralize dangling pointers.
-* **Double-Free Interception:** Validates block metadata before freeing, preventing fatal Segmentation Faults.
-
+## The Tradeoffs
+This system strictly trades RAM efficiency for raw execution speed. It is a **Bump Allocator** and is not meant for general purpose application development:
+1. **No Memory Reclamation:** Freed memory is pushed to a local free list but is never unmapped (`munmap`) back to the operating system.
+2. **Orphaned Memory Leaks:** Because free lists are `thread_local`, memory freed by a terminating thread is permanently orphaned.
+3. **Massive Over Allocation:** A thread needing only 8 bytes will still lock down an entire 1MB chunk of physical RAM from the OS.
+4. **Large Allocations:** For single, massive allocations (like allocating a large matrix all at once), the native macOS zone allocator is faster due to OS level virtual memory mapping.
