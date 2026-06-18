@@ -29,7 +29,7 @@ The allocator exposes a low-level C-style API and a standard C++ allocator trait
 
 * `void* CustomHeap::allocate(size_t size)`: Requests memory. Checks the thread-local free list first, falls back to the thread-local bump pointer, and finally locks the global heap if the TLAB is exhausted.
 * `void CustomHeap::deallocate(void* ptr)`: Pushes the pointer to the front of the calling thread's local free list. No locks are acquired.
-* `MyVectorAllocator<T>`: A template struct satisfying the C++ Named Requirement for `Allocator`. Allows integration with standard library containers.
+* `Allocator<T>`: A template struct satisfying the C++ Named Requirement for `Allocator`. Allows integration with standard library containers.
 
 ## Usage Demo
 Integrating the allocator with standard C++ containers requires passing the allocator trait as the second template parameter.
@@ -37,7 +37,7 @@ Integrating the allocator with standard C++ containers requires passing the allo
 ```cpp
 #include <vector>
 #include <iostream>
-#include "custom_allocator.hpp"
+#include "allocator.hpp"
 
 int main() {
     // Standard vector using the custom lock-free allocator
