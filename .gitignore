@@ -1,0 +1,28 @@
+# Prerequisites
+*.d
+
+# Compiled object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Compiled dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+bench
+bench_matrix
+bench_stress
+allocator_compare
+
+# macOS specific
+.DS_Store
